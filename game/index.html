@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SKYBOUND — LAST LIGHT</title>
+<link rel="stylesheet" href="./style.css">
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="scene" aria-label="Skybound Last Light: a golden-hour flight game over an island"></canvas>
+<canvas id="hud" aria-hidden="true"></canvas>
+
+<div id="title" class="overlay">
+  <div class="card">
+    <p class="kicker">MAKE.FUN — BEST FLIGHT GAME</p>
+    <h1>SKYBOUND<br><span>LAST LIGHT</span></h1>
+    <p class="tagline">One golden-hour island. One bush plane. Eight rings, one runway, and a
+      landing that decides your grade.</p>
+    <div class="buttons">
+      <button id="start-btn" class="primary">START MISSION</button>
+      <button id="free-btn">FREE FLIGHT</button>
+    </div>
+    <table class="controls">
+      <tr><td>W / S</td><td>Pitch down / up</td><td>A / D</td><td>Roll left / right</td></tr>
+      <tr><td>Q / E</td><td>Rudder</td><td>Shift / Ctrl</td><td>Throttle up / down</td></tr>
+      <tr><td>Space</td><td>Airbrake</td><td>F / G</td><td>Flaps / Gear</td></tr>
+      <tr><td>C</td><td>Chase / Cockpit</td><td>R</td><td>Restart</td><td>P</td><td>Pause</td></tr>
+    </table>
+    <p class="hint">Mouse: click the sky to steer with it. Watch your fuel — an empty tank
+      means gliding home. Land on runway 09 for the best grade.</p>
+  </div>
+</div>
+
+<div id="results" class="overlay hidden">
+  <div class="card">
+    <p class="kicker" id="result-mode">MISSION — LAST LIGHT</p>
+    <p class="grade grade-S" id="result-grade">S</p>
+    <p class="score"><span id="result-score">0</span> PTS</p>
+    <p class="stats">RINGS <span id="result-rings">0/8</span> &nbsp;·&nbsp; TIME <span id="result-time">00:00</span></p>
+    <p class="detail" id="result-detail"></p>
+    <div class="buttons">
+      <button id="again-btn" class="primary">FLY AGAIN (R)</button>
+      <button id="free2-btn">FREE FLIGHT</button>
+    </div>
+  </div>
+</div>
+
+<div id="paused" class="overlay hidden">
+  <div class="card small">
+    <h2>PAUSED</h2>
+    <p>Press P to keep flying.</p>
+  </div>
+</div>
+
+<p id="status" role="status" aria-live="polite"></p>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
