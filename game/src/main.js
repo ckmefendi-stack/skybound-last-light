@@ -33,7 +33,7 @@ const renderer = new THREE.WebGLRenderer({ canvas: sceneCanvas, antialias: true,
 renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
+renderer.toneMappingExposure = 1.25;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.5, 20000);
@@ -79,7 +79,10 @@ function updateCamera(dt, snap) {
   if (cameraMode === 'cockpit') {
     // Pilot's eye, inside the fuselage: the hull is front-sided, so it is invisible
     // from in here and the panel, the wings and the world ahead read cleanly.
-    const eye = new THREE.Vector3(0, 0.72, 0.2).applyQuaternion(state.quat).add(state.pos);
+    // y=0.6 puts the eye below the fuselage crown (y≈0.76 here): any higher and the
+    // cowling's shoulders draw a dark Λ over the panel. The lowered panel (y=0.2)
+    // keeps the next ring visible above its top edge.
+    const eye = new THREE.Vector3(0, 0.6, -0.1).applyQuaternion(state.quat).add(state.pos);
     const look = new THREE.Vector3(0, 0.5, -40).applyQuaternion(state.quat).add(state.pos);
     camera.position.copy(eye);
     camera.lookAt(look);
@@ -91,7 +94,7 @@ function updateCamera(dt, snap) {
     chasePos.copy(desired);
     chaseLook.copy(look);
   }
-  const k = 1 - Math.exp(-dt * 7);
+  const k = 1 - Math.exp(-dt * 9); // tight follow: the camera never fights the pilot
   chasePos.lerp(desired, k);
   chaseLook.lerp(look, k);
   camera.position.copy(chasePos);
@@ -252,7 +255,7 @@ function runGame() {
     syncAircraft();
     updateCamera(dt, false);
     renderer.render(scene, camera);
-    if (screen !== 'title') hud.draw(telemetry);
+    if (screen !== 'title') hud.draw(telemetry, { cockpit: cameraMode === 'cockpit' });
   }
   announce('Skybound Last Light. Press Space or click Start Mission to fly.');
   requestAnimationFrame(frame);
@@ -275,6 +278,9 @@ if (shot) {
   screen = 'play'; // the shot stages a flight, not the title orbit camera
   hideOverlays();
   stageShot(shot, gameApi);
+  // The landing scorecard slides left so the parked aircraft shows beside it
+  // instead of hiding directly behind the card.
+  if (shot === 'landing') resultsEl.classList.add('side');
   syncAircraft();
   updateCamera(1, true);
   const telemetry = computeTelemetry(state);
@@ -283,7 +289,7 @@ if (shot) {
   let painted = 0;
   function paint() {
     renderer.render(scene, camera);
-    hud.draw(computeTelemetry(state));
+    hud.draw(computeTelemetry(state), { cockpit: cameraMode === 'cockpit' });
     painted += 1;
     if (painted < 3) requestAnimationFrame(paint);
     else window.__shotReady = true;

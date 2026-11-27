@@ -95,7 +95,8 @@ export function createHud(canvas) {
       ctx.lineTo(px, y + h - 4);
       ctx.stroke();
       const label = norm === 0 ? 'N' : norm === 90 ? 'E' : norm === 180 ? 'S' : norm === 270 ? 'W' : norm % 30 === 0 ? String(norm / 10) : '';
-      if (label) ctx.fillText(label, px, y + 20);
+      // Never print a label half-cut at the panel edge.
+      if (label && px >= x + 18 && px <= x + w - 18) ctx.fillText(label, px, y + 20);
     }
     ctx.restore();
     ctx.fillStyle = 'rgba(8,12,18,0.8)';
@@ -212,7 +213,7 @@ export function createHud(canvas) {
     ctx.fillStyle = '#22e6ff';
     ctx.font = 'bold 17px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('RING ' + (t.ring + 1) + '/' + t.ringsTotal + '  ·  ' + dist, cx, y + 15);
+    ctx.fillText('NEXT RING ' + (t.ring + 1) + '/' + t.ringsTotal + '  ·  ' + dist, cx, y + 15);
     // Bearing chevron: points toward the next ring relative to the nose.
     const b = Math.max(-60, Math.min(60, t.nextBearingDeg));
     const bx = cx + b * 2.4;
@@ -261,7 +262,7 @@ export function createHud(canvas) {
     ctx.fillText('RING ' + t.ring + '/' + t.ringsTotal + '  +' + t.lastRingGain, width / 2, height / 2 - 160);
   }
 
-  function draw(t) {
+  function draw(t, opts) {
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = WHITE;
     ctx.font = 'bold 15px monospace';
@@ -273,7 +274,9 @@ export function createHud(canvas) {
     tape(24, height / 2 - 150, 92, 300, t.speedKt, 10, 50, 'KT', (v) => String(Math.round(v)));
     tape(width - 116, height / 2 - 150, 92, 300, t.altFt, 100, 500, 'FT', (v) => String(Math.round(v)));
     compass(t);
-    pitchLadder(t);
+    // In cockpit view the 3D six-pack already shows attitude; the 2D ladder would
+    // draw its lines straight through the panel. Chase view keeps it.
+    if (!opts || !opts.cockpit) pitchLadder(t);
     nextRing(t);
     bars(t);
     scoreBlock(t);

@@ -46,8 +46,9 @@ export function stageShot(name, game) {
   }
   if (name === 'approach') {
     // On final for runway 09: gear and flaps out, descending 350 fpm, PAPI ahead.
+    // Staged 150 m from the threshold so the runway fills the frame.
     place(state, {
-      x: -800, y: 55, z: 2300, headingDeg: 90, pitchDeg: -3, speed: 52, throttle: 0.35,
+      x: -600, y: 48, z: 2300, headingDeg: 90, pitchDeg: -3, speed: 52, throttle: 0.35,
       gear: true, flaps: true, ringIndex: 8, score: 8200, time: 168, fuel: 41, vspeed: -1.78,
     });
     world.resetRings();
@@ -83,10 +84,12 @@ export function stageShot(name, game) {
     });
     return 'landing';
   }
-  // Default: chase — banked into a turn mid-course, ring 4 ahead, ridge behind.
+  // Default: chase — banked into a turn mid-course, ring 3 ahead (~330 m, so it reads
+  // large in frame) with the lighthouse headland and the harbour behind it, ocean to
+  // the east, ridge to the north.
   place(state, {
-    x: 1400, y: 300, z: -1400, headingDeg: 326, bankDeg: 18, speed: 85, throttle: 0.75,
-    ringIndex: 3, score: 2450, time: 82, fuel: 72,
+    x: 2280, y: 150, z: -80, headingDeg: 14, bankDeg: 16, speed: 80, throttle: 0.7,
+    ringIndex: 2, score: 1620, time: 54, fuel: 86,
   });
   world.resetRings();
   for (let i = 0; i < 3; i += 1) world.setRingPassed(i);

@@ -55,16 +55,20 @@ export function terrainHeight(x, z) {
   return Math.max(h, -25);
 }
 
-function colourForHeight(h, slope, tint) {
+function colourForHeight(h, slope, tint, forest) {
   const sand = new THREE.Color(0xd9b380);
   const grass = new THREE.Color(0x5a8f3c);
   const grassDry = new THREE.Color(0x8aa04a);
+  const forestGreen = new THREE.Color(0x3a6b2e);
   const rock = new THREE.Color(0x8a7a6a);
   const snow = new THREE.Color(0xe9e9e9);
   const c = new THREE.Color();
   if (h < 4) c.copy(sand);
-  else if (h < 130) c.copy(grass).lerp(grassDry, Math.min(1, Math.max(0, tint)));
-  else if (h < 300) c.copy(grass).lerp(rock, smoothstep(130, 300, h));
+  else if (h < 130) {
+    c.copy(grass).lerp(grassDry, Math.min(1, Math.max(0, tint)));
+    // Dark forest patches break the smooth lawn into readable woodland.
+    c.lerp(forestGreen, smoothstep(0.58, 0.78, forest) * 0.75);
+  } else if (h < 300) c.copy(grass).lerp(rock, smoothstep(130, 300, h));
   else c.copy(rock).lerp(snow, smoothstep(300, 380, h));
   if (slope > 0.55) c.lerp(rock, Math.min(1, (slope - 0.55) * 2));
   return c;
@@ -87,8 +91,9 @@ function buildTerrain(scene) {
     const hz = terrainHeight(x, z + 8) - terrainHeight(x, z - 8);
     const slope = Math.hypot(hx, hz) / 16;
     const tint = noise.fbm(x * 0.004 + 11, z * 0.004 - 5, 2) * 0.5 + 0.5;
-    c.copy(colourForHeight(h, slope, tint));
-    const shade = 0.92 + 0.08 * noise.noise2(x * 0.02, z * 0.02);
+    const forest = noise.fbm(x * 0.0013 + 31, z * 0.0013 + 17, 2) * 0.5 + 0.5;
+    c.copy(colourForHeight(h, slope, tint, forest));
+    const shade = 0.88 + 0.12 * noise.noise2(x * 0.02, z * 0.02);
     colours[i * 3] = c.r * shade;
     colours[i * 3 + 1] = c.g * shade;
     colours[i * 3 + 2] = c.b * shade;
@@ -125,9 +130,11 @@ function buildSky(scene) {
       'void main() {',
       '  float h = clamp(vDir.y, -0.08, 1.0);',
       '  vec3 col = mix(horizonColour, topColour, pow(max(h, 0.0), 0.55));',
-      '  float sun = pow(max(dot(normalize(vDir), normalize(sunDirection)), 0.0), 90.0);',
-      '  float glow = pow(max(dot(normalize(vDir), normalize(sunDirection)), 0.0), 6.0);',
-      '  col += sunColour * (sun * 0.7 + glow * 0.22);',
+      '  float d = max(dot(normalize(vDir), normalize(sunDirection)), 0.0);',
+      '  float sun = pow(d, 220.0);',
+      '  float glow = pow(d, 6.0);',
+      '  float disc = smoothstep(0.9992, 0.9996, d);',
+      '  col += sunColour * (sun * 0.9 + glow * 0.22 + disc * 1.8);',
       '  gl_FragColor = vec4(col, 1.0);',
       '}',
     ].join('\n'),
@@ -135,15 +142,15 @@ function buildSky(scene) {
   const sky = new THREE.Mesh(skyGeo, skyMat);
   scene.add(sky);
 
-  const sun = new THREE.DirectionalLight(0xffc07a, 2.4);
+  const sun = new THREE.DirectionalLight(0xffc07a, 3.0);
   sun.position.set(-4200, 1100, 2600);
   scene.add(sun);
   // Cool fill from the east so the aircraft is never a black silhouette.
-  const fill = new THREE.DirectionalLight(0xbfd4ff, 0.55);
+  const fill = new THREE.DirectionalLight(0xbfd4ff, 0.85);
   fill.position.set(4000, 2000, -1000);
   scene.add(fill);
-  scene.add(new THREE.HemisphereLight(0xffd9a0, 0x2c3e50, 0.9));
-  scene.fog = new THREE.FogExp2(0xe8a06a, 0.00011);
+  scene.add(new THREE.HemisphereLight(0xffd9a0, 0x2c3e50, 1.15));
+  scene.fog = new THREE.FogExp2(0xe8a06a, 0.00009);
 }
 
 function canvasNumberTexture(text) {
@@ -240,7 +247,7 @@ function buildPapi(scene) {
   const lenses = [];
   for (let i = 0; i < 4; i += 1) {
     const box = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.4, 1.4), new THREE.MeshLambertMaterial({ color: 0x333333 }));
-    box.position.set(120 + i * 12, RUNWAY.y + 1.2, RUNWAY.z + 34);
+    box.position.set(-300 + i * 12, RUNWAY.y + 1.2, RUNWAY.z + 34);
     const lens = new THREE.Mesh(
       new THREE.BoxGeometry(0.4, 0.9, 0.9),
       new THREE.MeshBasicMaterial({ color: 0xffffff }),
@@ -403,9 +410,64 @@ function buildRings(scene) {
   return { rings, beacon };
 }
 
+/** Low-poly woodland: two instanced meshes (trunks + canopies) so the island reads
+ *  as terrain with texture from the air instead of a smooth lawn. Deterministic. */
+function buildTrees(scene) {
+  const spots = [];
+  let guard = 0;
+  while (spots.length < 650 && guard < 20000) {
+    guard += 1;
+    const x = (rand() - 0.5) * 5600;
+    const z = (rand() - 0.5) * 5600;
+    const h = terrainHeight(x, z);
+    if (h < 10 || h > 130) continue;
+    if (Math.abs(x) < 750 && Math.abs(z - 2300) < 320) continue; // runway shelf
+    if (Math.hypot(x - 1950, z - 950) < 620) continue; // harbour flats
+    if (Math.abs(x + 1700) < 380 && Math.abs(z - 150) < 1100) continue; // bridge canyon
+    let nearRing = false;
+    for (const r of RING_COURSE) {
+      if (Math.hypot(x - r.x, z - r.z) < 130) { nearRing = true; break; }
+    }
+    if (nearRing) continue;
+    const hx = terrainHeight(x + 8, z) - terrainHeight(x - 8, z);
+    const hz = terrainHeight(x, z + 8) - terrainHeight(x, z - 8);
+    if (Math.hypot(hx, hz) / 16 > 0.35) continue;
+    spots.push({ x, z, h, s: 0.8 + rand() * 0.7 });
+  }
+  const trunks = new THREE.InstancedMesh(
+    new THREE.CylinderGeometry(0.25, 0.4, 1.6, 6),
+    new THREE.MeshLambertMaterial({ color: 0x5a4632 }),
+    spots.length,
+  );
+  const cones = new THREE.InstancedMesh(
+    new THREE.ConeGeometry(2.6, 9, 8),
+    new THREE.MeshLambertMaterial({ color: 0xffffff }),
+    spots.length,
+  );
+  const m = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const sc = new THREE.Vector3();
+  const p = new THREE.Vector3();
+  const col = new THREE.Color();
+  spots.forEach((s, i) => {
+    m.compose(p.set(s.x, s.h + 0.8 * s.s, s.z), q, sc.set(s.s, s.s, s.s));
+    trunks.setMatrixAt(i, m);
+    m.compose(p.set(s.x, s.h + 6.1 * s.s, s.z), q, sc.set(s.s, s.s, s.s));
+    cones.setMatrixAt(i, m);
+    col.setHSL(0.29 + rand() * 0.04, 0.45, 0.22 + rand() * 0.08);
+    cones.setColorAt(i, col);
+  });
+  trunks.instanceMatrix.needsUpdate = true;
+  cones.instanceMatrix.needsUpdate = true;
+  if (cones.instanceColor) cones.instanceColor.needsUpdate = true;
+  scene.add(trunks);
+  scene.add(cones);
+}
+
 /** Build the whole island into the scene; returns the live handles the game updates. */
 export function buildWorld(scene) {
   buildTerrain(scene);
+  buildTrees(scene);
   buildSky(scene);
   buildRunway(scene);
   const papi = buildPapi(scene);

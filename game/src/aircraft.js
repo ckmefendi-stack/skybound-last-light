@@ -4,7 +4,7 @@
 // so the instruments in the cockpit view are lit by the same telemetry as the HUD.
 import * as THREE from 'three';
 
-const NAVY = 0x1d3557;
+const NAVY = 0x2a4d7a; // lightened steel navy: the v1 fuselage read as a black silhouette
 const NAVY_LIGHT = 0x2f5d8f;
 const GOLD = 0xe8a33d;
 
@@ -293,13 +293,15 @@ export function buildAircraft(scene) {
   tailCone.position.z = 2.9;
   group.add(tailCone);
   for (const side of [-1, 1]) {
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.14, 4.4), gold);
-    stripe.position.set(side * 0.93, 0.12, 0);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.22, 4.4), gold);
+    stripe.position.set(side * 0.93, 0.1, 0);
     group.add(stripe);
   }
   const canopy = new THREE.Mesh(
     new THREE.SphereGeometry(0.75, 16, 12),
-    new THREE.MeshPhongMaterial({ color: 0x9fc8e8, transparent: true, opacity: 0.15, side: THREE.DoubleSide, shininess: 140, specular: 0xccddff }),
+    // FrontSide only: from the pilot's seat the canopy must be invisible, so its
+    // dark arch never covers the instrument panel in cockpit view.
+    new THREE.MeshPhongMaterial({ color: 0x9fc8e8, transparent: true, opacity: 0.15, side: THREE.FrontSide, shininess: 140, specular: 0xccddff }),
   );
   canopy.scale.set(0.9, 0.72, 1.7);
   canopy.position.set(0, 0.55, -0.9);
@@ -336,13 +338,15 @@ export function buildAircraft(scene) {
   group.add(rudder);
 
   const prop = new THREE.Group();
+  // Translucent disc + soft blades: from the cockpit the prop reads as a blur,
+  // not a solid black slab sweeping past the panel.
   const disc = new THREE.Mesh(
     new THREE.CircleGeometry(1.5, 24),
-    new THREE.MeshBasicMaterial({ color: 0x222222, transparent: true, opacity: 0.22, side: THREE.DoubleSide }),
+    new THREE.MeshBasicMaterial({ color: 0x222222, transparent: true, opacity: 0.15, side: THREE.DoubleSide }),
   );
   prop.add(disc);
   for (const a of [0, Math.PI / 2]) {
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.9, 0.08), new THREE.MeshLambertMaterial({ color: 0x222222 }));
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.9, 0.08), new THREE.MeshBasicMaterial({ color: 0x222222, transparent: true, opacity: 0.38 }));
     blade.rotation.z = a;
     prop.add(blade);
   }
@@ -388,7 +392,9 @@ export function buildAircraft(scene) {
     new THREE.MeshLambertMaterial({ color: 0x141a22 }),
   ];
   const panel = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.85, 0.22), panelMats);
-  panel.position.set(0, 0.45, -1.9);
+  // Lowered so the next ring clears its top edge from the pilot's seat (eye inside
+  // the fuselage at y=0.6): the panel top sits just under the horizon, world above it.
+  panel.position.set(0, 0.2, -1.9);
   panel.rotation.x = -0.22;
   group.add(panel);
 

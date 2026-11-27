@@ -39,6 +39,8 @@ html, body {
   z-index: 10;
 }
 .overlay.hidden { display: none; }
+/* Landing shot: the scorecard slides left so the parked aircraft shows beside it. */
+.overlay.side { justify-content: flex-start; padding-left: 48px; }
 .card {
   max-width: 560px;
   width: calc(100% - 48px);

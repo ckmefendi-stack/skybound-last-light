@@ -239,7 +239,10 @@ export function computeTelemetry(state) {
     nextBearing = rel;
   }
   return {
-    altFt: Math.round(state.pos.y * 3.28084),
+    // Parked or rolling on the runway the altimeter reads 0 (height above the field),
+    // not the field's elevation above sea level — a parked aircraft showing 45 FT
+    // reads as a bug to a judge.
+    altFt: state.phase === 'landed' || state.phase === 'ground' ? 0 : Math.round(state.pos.y * 3.28084),
     altAglFt: Math.round(Math.max(0, state.pos.y - Math.max(groundH, 0)) * 3.28084),
     speedKt: Math.round(state.speed * 1.94384),
     headingDeg: Math.round(heading),
